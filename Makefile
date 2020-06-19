@@ -1,5 +1,8 @@
 clean:
 	rm -f *.bin
 
-.PHONY: clean
+toc:
+	doctoc --notitle --github README.md
+
+.PHONY: clean toc
 
