@@ -52,10 +52,11 @@ HeatPump hp;
 unsigned long lastPeriodicReport;
 MQTT* mqttClient = NULL;
 
-String mqttBrokerHost = DEFAULT_MQTT_BROKER_HOST;
-int mqttBrokerPort = DEFAULT_MQTT_BROKER_PORT;
+retained String mqttBrokerHost = DEFAULT_MQTT_BROKER_HOST;
+retained int mqttBrokerPort = DEFAULT_MQTT_BROKER_PORT;
+retained String deviceName = "heatpump-unknown";
 
-String deviceName = "heatpump-unknown";
+STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 
 void logEvent(String msg) {
   Log.info(msg);
@@ -239,6 +240,7 @@ void serviceMqtt() {
     mqttClient->connect(deviceName);
     if (mqttClient->isConnected()) {
       logEvent("Connected to MQTT broker.");
+      publishAll();
       mqttClient->subscribe("heatpump/+/control/power");
       mqttClient->subscribe("heatpump/+/control/mode");
       mqttClient->subscribe("heatpump/+/control/temperature-c");
@@ -341,33 +343,63 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void publishMqtt(const char* subtopicName, String* message) {
+void publishMqtt(const char* subtopicName, const char* value) {
   if (mqttClient == NULL) {
     return;
   }
   const char* topicName = String::format("heatpump/%s/%s", deviceName.c_str(), subtopicName).c_str();
-  const char* value = message->c_str();
   mqttClient->publish(topicName, value);
 }
 
-void hpSettingsChanged() {
-  heatpumpSettings newSettings = hp.getSettings();
-  String jsonStr;
-  serializeToJsonString(&newSettings, &jsonStr);
+void publishMqtt(const char* subtopicName, String* message) {
+  publishMqtt(subtopicName, message->c_str());
+}
 
-  Log.info("--> hpSettingsChanged %s", jsonStr.c_str());
-  Particle.publish("heatpump/settings-changed", jsonStr.c_str(), PRIVATE);
+void publishStatus() {
+  heatpumpStatus status = hp.getStatus();
+  String jsonStr;
+  serializeToJsonString(&status, &jsonStr);
+
+  publishMqtt("status/room-temperature-c", String(status.roomTemperature).c_str());
+  publishMqtt("status/is-operating", String(status.operating ? "true" : "false").c_str());
+  publishMqtt("status", &jsonStr);
+
+  Particle.publish("heatpump/status-changed", jsonStr.c_str(), PRIVATE);
+
+  Log.info("--> Published status: %s", jsonStr.c_str());
+}
+
+void publishSettings() {
+  heatpumpSettings settings = hp.getSettings();
+  String jsonStr;
+  serializeToJsonString(&settings, &jsonStr);
+
+  publishMqtt("settings/power", settings.power);
+  publishMqtt("settings/mode", settings.mode);
+  publishMqtt("settings/temperature-c", String(settings.temperature).c_str());
+  publishMqtt("settings/fan", settings.fan);
+  publishMqtt("settings/vane", settings.vane);
+  publishMqtt("settings/wide-vane", settings.wideVane);
+  publishMqtt("settings/is-connected", String(settings.connected ? "true" : "false"));
   publishMqtt("settings", &jsonStr);
+
+  Particle.publish("heatpump/settings-changed", jsonStr.c_str(), PRIVATE);
+
+  Log.info("--> Published settings: %s", jsonStr.c_str());
+}
+
+void publishAll() {
+  publishSettings();
+  publishStatus();
+  lastPeriodicReport = millis();
+}
+
+void hpSettingsChanged() {
+  publishSettings();
 }
 
 void hpStatusChanged(heatpumpStatus newStatus) {
-  String jsonStr;
-  serializeToJsonString(&newStatus, &jsonStr);
-  Log.info("--> hpStatusChanged %s", jsonStr.c_str());
-
-  Particle.publish("heatpump/status-changed", jsonStr.c_str()), PRIVATE;
-  publishMqtt("status", &jsonStr);
-  lastPeriodicReport = millis();
+  publishStatus();
 }
 
 void hpPacketDebug(byte* packet, unsigned int length, char* packetDirection) {
@@ -379,6 +411,6 @@ void loop() {
   serviceMqtt();
 
   if (lastPeriodicReport == 0 || (millis() - lastPeriodicReport) > PERIODIC_REPORT_INTERVAL_MILLIS) {
-    hpStatusChanged(hp.getStatus());
+    publishAll();
   }
 }
