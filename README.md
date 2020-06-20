@@ -194,6 +194,7 @@ Individual values are also posted to the following additional topics:
 * `heatpump/<name>/status`
   * `heatpump/<name>/status/room-temperature-c`
   * `heatpump/<name>/status/is-operating`
+  * `heatpump/<name>/status/firmware-version`
 
 ## Changelog
 
