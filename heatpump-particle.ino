@@ -14,6 +14,8 @@
 SerialLogHandler logHandler;
 #endif
 
+#define FIRMWARE_VERSION "v0.1.0"
+
 #define POWER_ON "ON"
 #define POWER_OFF "OFF"
 
@@ -362,6 +364,7 @@ void publishStatus() {
 
   publishMqtt("status/room-temperature-c", String(status.roomTemperature).c_str());
   publishMqtt("status/is-operating", String(status.operating ? "true" : "false").c_str());
+  publishMqtt("status/firmware-version", String(FIRMWARE_VERSION).c_str());
   publishMqtt("status", &jsonStr);
 
   Particle.publish("heatpump/status-changed", jsonStr.c_str(), PRIVATE);

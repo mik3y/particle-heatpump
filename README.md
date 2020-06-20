@@ -176,11 +176,24 @@ For example, a device named `mydevice-1` will respond to the following topics:
 
 #### Status topics (publishing)
 
-The device will post status updates on the following topics:
+The device will post status updates on the following topics as JSON:
 
 * `heatpump/<name>/status`: Device status, as a JSON object. Same format as the `heatpump/status-changed` Particle Cloud event.
 * `heatpump/<name>/settings`: Device settings, as a JSON object. Same format as the `heatpump/settings-changed` Particle Cloud event.
 
+Individual values are also posted to the following additional topics:
+
+* `heatpump/<name>/settings`
+  * `heatpump/<name>/settings/fan`
+  * `heatpump/<name>/settings/is-connected`
+  * `heatpump/<name>/settings/mode`
+  * `heatpump/<name>/settings/power`
+  * `heatpump/<name>/settings/temperature-c`
+  * `heatpump/<name>/settings/vane`
+  * `heatpump/<name>/settings/wide-vane`
+* `heatpump/<name>/status`
+  * `heatpump/<name>/status/room-temperature-c`
+  * `heatpump/<name>/status/is-operating`
 
 ## Changelog
 
